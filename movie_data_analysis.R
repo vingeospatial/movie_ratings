@@ -25,7 +25,7 @@ View(movie_raw)
 names(movie_raw)
 
 movies <- movie_raw |> 
-  janitor::clean_names() |>       # Conver column names to snake_case
+  janitor::clean_names() |>       # Convert column names to snake_case
   select(-tidyselect::any_of(c("unnamed_0", "x"))) |>   # Drop unwanted columns if they exist
   mutate(
     # Parse release_date safely(ymd ignores if already Date)   
@@ -73,7 +73,106 @@ movies |>
   
   
   
- # STEP 7: TOP RATED MOVIES WITH MINIMUM 1000 VOTES  
+ # STEP 7: TOP RATED MOVIES WITH MINIMUM 1000 VOTES
+
+min_votes <- 1000 # to avoid including unknown films with 1 vote
+top_rated <- movies |> 
+  filter(vote_count >= min_votes) |>                                   # Keep only movies with 1000+ votes
+  arrange(desc(vote_average)) |>                                      # Sort by highest rating
+  slice_head(n = 15)                                                  # Pick top 15
+ggplot(top_rated, aes(x = reorder(title, vote_average), y = vote_average)) +
+  geom_col(fill = "seagreen") +                                       # green horizontal bars
+  coord_flip() +                                                      # Flip for horizontal layout
+  labs(
+    title = paste("Top 15 Highest Rated Movies (vote_count >=", min_votes, ")"),
+    x = "Movie Title",                                                # X-axis label
+    y = "Average Rating"                                              # Y-axis label
+  ) +
+  theme_minimal()                                                     # Clean style
+  
+  
+# AVERAGE MOVIE RATING OVER TIME   
+
+rating_year <- movies |> 
+  filter(!is.na(year)) |>                  # Remove rows with missing year
+  group_by(year) |>                        # Group by release year
+  summarise(
+    avg_rating = mean(vote_average, na.rm = TRUE), # Calculate average rating
+    n = n()                                        # Count movies per year
+  ) |> 
+  filter(n >= 5)   # Keep years with at least 5 movies to avoid unreliable averages
+ggplot(rating_year, aes(x = year, y = avg_rating)) + 
+  geom_line(color = "steelblue") +                                # Line for rating trend
+  geom_point() +                                                 # Add points for each year
+  labs(
+    title = "Average Movie rating by Year",                      # Chart title
+    x = "Year",                                                  # X-axis label
+    y = "Average Rating"                                         # Y-axis
+  ) +
+  theme_minimal()                                                # clean visual theme
+  
+
+
+# POPULARITY VS VOTE COUNT 
+ggplot(movies, aes(x = popularity, y = vote_count)) +
+  geom_point(alpha = 0.5, color = "purple") +           # Scatter plot with semi-transparent purple points
+  scale_x_log10() +                                     # Log scale for popularity (x-axis)
+  scale_y_log10() +                                     # Log scale for vote count (y-axis)
+  labs(
+    title = "Popularity vs Vote Count (log-log scale)", # Chart title
+    x = "Popularity (log)",                             # X-axis label
+    y = "Vote Count (log)"                              # Y-axis label
+  ) +
+  theme_minimal()                                       # clean theme
+
+
+# FEATURE ENGINEERING   
+movies_fe <- movies |> 
+  mutate(
+    log_vote_count = log1p(vote_count),              # use log(1 + x) to avoid log(0) issues
+    high_rating    = vote_average >= 8,              # TRUE if rating is 8 or higher (for classification)
+    rating_bucket  = case_when(                      # Group ratings into categories
+      vote_average < 5 ~ "Low",
+      vote_average < 7 ~ "Average",
+      TRUE             ~ "High"
+    )
+  ) |> 
+  mutate(rating_bucket = factor(rating_bucket, levels = c("Low", "Average", "High")))   # Ordered factor
+# Check the new structure  
+glimpse(movies_fe)  # See new columns
+# Count how many movies fall into each rating bucket
+movies_fe |> 
+  count(rating_bucket)
+
+
+
+# STEP 11: distribution of vote count(Raw vs log transformed)   
+
+# DISTRIBUTION OF VOTE COUNTS   
+par(mfrow = c(1, 2))   # show two plots side by side 
+
+# Histogram of raw vote counts     
+hist(movies$vote_count, breaks = 30,
+     main = "Vote Count (Raw)", col = "tomato", xlab = "vote_count")
+
+# Histogram of log-transformed vote counts  
+hist(movies_fe$log_vote_count, breaks = 30,
+     main = "Vote Count (Log Transformed)", col = "steelblue", xlab = "log_vote_count")
+
+par(mfrow = c(1, 1))   # Reset plot layout default 
+
+
+
+
+
+# STEP 12: RATING BUCKET COUNTS
+
+
+
+  
+  
+  
+  
   
   
   
