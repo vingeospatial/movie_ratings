@@ -164,16 +164,91 @@ par(mfrow = c(1, 1))   # Reset plot layout default
 
 
 
-
 # STEP 12: RATING BUCKET COUNTS
+ggplot(movies_fe, aes(x = rating_bucket)) +
+  geom_bar(fill = "goldenrod") +
+  labs(
+    title = "Number of Movies by Rating Bucket",
+    x = "Rating Category",
+    y = "Number of Movies"
+  ) +
+  theme_minimal()
+
+  
+# POPULARITY BY RATING BUCKET   
+movies_fe |> 
+  group_by(rating_bucket) |>
+  summarise(avg_popularity = mean(popularity,  na.rm = TRUE)) |> 
+  ggplot(aes(x = rating_bucket, y = avg_popularity, fill = rating_bucket)) +
+  geom_col() +
+  labs(
+    title = "Average Popularity by Rating Bucket",
+    x = "Rating Category",
+    y = "Average Popularity"
+  ) +
+  theme_minimal()
+  
+              
+
+# TRAIN/TEST SPLIT    
+
+set.seed(42)  # for reproducibility   
+# Drop rows with missing model feature   
+movies_model <- movies_fe |> 
+  drop_na(vote_average, popularity, log_vote_count, year)
+# split into 80% train, 20% test   
+n <- nrow(movies_model)
+train_index <- sample(seq_len(n), size = 0.8 * n)
+train <- movies_model[train_index, ]
+test <- movies_model[-train_index, ]
+cat("Train size:", nrow(train), " | Test size:", nrow(test), "\n")
 
 
+# LINEAR REGRESSION    
+lm_model <- lm(vote_average ~ popularity + log_vote_count + year, data = train)
+# Summary of model coefficients  
+summary(lm_model)
 
-  
-  
-  
-  
-  
+# EVALUATE THE LINEAR REGRESSION MODEL 
+test$pred_rating <- predict(lm_model, newdata = test)
+# Define metrics 
+rmse <- function(actual, pred) sqrt(mean((actual - pred)^2))  # Root Mean Square Error
+mae <- function(actual, pred) mean(abs(actual - pred))        # Mean Absolute Error
+r2 <- function(actual, pred) cor(actual, pred)^2              # R-squared  
+
+# Calculate metrics 
+lm_rmse <- rmse(test$vote_average, test$pred_rating)
+lm_mae <- mae(test$vote_average, test$pred_rating)
+lm_r2 <- r2(test$vote_average, test$pred_rating)
+
+cat("RMSE:", lm_rmse, "\n")
+cat("MAE :", lm_mae,  "\n")
+cat("R²  :", lm_r2,   "\n")
+
+
+# Logistic Regression (for Classification)   
+glm_model <- glm(high_rating ~ popularity + log_vote_count + year,
+                 data = train, family = binomial)
+summary(glm_model)
+
+
+# EVALUATE LOGISTIC REGRESSION MODEL    
+test$prob_high <- predict(glm_model, newdata = test, type = "response")
+
+# Predict TRUE/FALSE based on 0.5 threshold 
+test$pred_high <- test$prob_high >= 0.5
+# Accuracy: how many predictions were correct
+accuracy <- mean(test$pred_high == test$high_rating)
+
+# AUC: measures how well the model separates TRUE from FALSE 
+roc_obj <- roc(response = test$high_rating, predictor = test$prob_high)
+auc_val <- auc(roc_obj)
+print(roc_obj)
+
+# cat("Accuracy:", roc_obj, "\n")
+# cat("AUC:", auc_val, "\n")
+
+
   
   
   
