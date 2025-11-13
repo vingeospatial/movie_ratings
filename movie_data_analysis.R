@@ -243,15 +243,73 @@ accuracy <- mean(test$pred_high == test$high_rating)
 # AUC: measures how well the model separates TRUE from FALSE 
 roc_obj <- roc(response = test$high_rating, predictor = test$prob_high)
 auc_val <- auc(roc_obj)
-print(roc_obj)
+
 
 # cat("Accuracy:", roc_obj, "\n")
-# cat("AUC:", auc_val, "\n")
+cat("AUC:", auc_val, "\n")
+
+# Compute accuracy
+pred_class <- ifelse(test$prob_high > 0.5, 1, 0)
+accuracy_val <- mean(pred_class == test$high_rating)
+
+cat("Accuracy:", accuracy_val, "\n")
+  
+ 
+# RANDOM FOREST   
+
+# INSTALL AND LOAD 
+  
+# need <- c("randomForest", "pROC", "tidyverse")
+# to_install <- setdiff(need, rownames(installed.packages()))
+# if (length(to_install)) install.packages(to_install)
 
 
+library(randomForest)
+library(pROC)
+library(tidyverse)
+
+
+# PREPARE DATA & SPLIT   
+set.seed(123)
+# keep only columns we need and drop rows with NAs in them   
+movies_model <- movies_fe |> 
+  drop_na(vote_average, popularity, log_vote_count, year, high_rating)
+
+
+# Make the classification target a factor (randomForest needs a factor for classification)   
+
+movies_model <- movies_model |>
+  mutate(
+    high_rating = factor(
+      high_rating,
+      levels = c(FALSE, TRUE),
+      labels = c("No", "Yes")
+    )
+  )
   
-  
-  
-  
-  
+# 80/20 split 
+n <- nrow(movies_model)
+train_idx <- sample(seq_len(n), size = 0.8 * n)
+train <- movies_model[train_idx, ]
+test <- movies_model[-train_idx, ]
+
+cat("Train size:", nrow(train), " | Test size:", nrow(test), "\n")
+
+
+# 21) RANDOM FOREST - REGRESSION    
+
+# formula: pick a few sensible predictors (you can add more later)     
+rf_reg <- randomForest(
+  vote_average ~ popularity + log_vote_count + year, 
+  data = train,
+  ntree = 500,       # number of trees
+  mtry = 2,          # number of variables tried at each split (tune this)
+  importance = TRUE  # so we can plot variable importance
+)
+print(rf_reg)
+
+
+
+
+
   
