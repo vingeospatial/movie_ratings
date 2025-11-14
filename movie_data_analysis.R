@@ -309,6 +309,45 @@ rf_reg <- randomForest(
 print(rf_reg)
 
 
+# EVALUATE - REGRESSION    
+
+# predict on test   
+test$rf_pred_rating <- predict(rf_reg, newdata = test)
+
+# Metrics   
+
+rmse <- function(actual, pred) sqrt(mean((actual - pred)^2))
+mae <- function(actual, pred) mean(abs(actual - pred))
+r2 <- function(actual, pred) cor(actual, pred)^2
+
+rf_rmse <- rmse(test$vote_average, test$rf_pred_rating)
+rf_mae <- mae(test$vote_average, test$rf_pred_rating)
+rf_r2 <- r2(test$vote_average, test$rf_pred_rating)
+
+cat("Random Forest Regression (Test)\n")
+cat("RMSE :", round(rf_rmse, 3), "\n")
+cat("MAE :", round(rf_mae, 3), "\n")
+cat("R^2 :", round(rf_r2, 3), "\n")
+
+
+
+# VARIABLE IMPORTANCE - REGRESSION    
+importance(rf_reg)
+varImpPlot(rf_reg, main = "Variable Importance (Random Forest - Regression)")
+
+
+# RANDOM FOREST - CLASSIFICATION 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
