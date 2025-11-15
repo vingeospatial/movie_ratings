@@ -337,16 +337,36 @@ varImpPlot(rf_reg, main = "Variable Importance (Random Forest - Regression)")
 
 
 # RANDOM FOREST - CLASSIFICATION 
+rf_clf <- randomForest(
+  high_rating ~ popularity + log_vote_count + year,
+  data = train,
+  ntree = 500,          # grow 500 trees
+  mtry = 2,             # try 2 predictors at each split
+  importance = TRUE     # keep importance stats for later plotting
+)
+print(rf_clf)           # shows oob error, confusion matrix, etc
 
 
+# Class predictions    
+test$rf_pred_class <- predict(rf_clf, newdata = test, type = "class")
+# probabilities for ROC/AUC 
+test$rf_prob_yes <- predict(rf_clf, newdata = test, type = "prob")[, "Yes"]
+# Accuracy
+accuracy <- mean(test$rf_pred_class == test$high_rating)
+# Confusion matrix (simple) 
+conf_mat <- table(Predicted = test$rf_pred_class, Actual = test$high_rating)
 
+#ROC / AUC (positive class = "Yes")
+roc_obj <- roc(response = test$high_rating, predictor = test$rf_prob_yes, levels = c("No", "Yes"))
+auc_val <- auc(roc_obj)
 
-
-
-
-
-
-
+# Print results 
+cat("Random Forest Classification (Test)\n")
+cat("Accuracy:", round(accuracy, 3), "\n")
+cat("AUC     :", round(as.numeric(auc_val), 3), "\n\n")
+print(conf_mat)
+# Plot ROC 
+plot(roc_obj, main = "ROC Curve - Random Forest Classification")
 
 
 
